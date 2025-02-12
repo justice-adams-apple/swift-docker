@@ -109,6 +109,8 @@ RUN Write-Host -NoNewLine ('Downloading {0} ... ' -f ${env:VSB});               
           '--norestart',                                                        \
           '--nocache',                                                          \
           '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22000',       \
+          '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22621',       \
+          '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.26100',       \
           '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64'          \
         );                                                                      \
     if ($Process.ExitCode -eq 0 -or $Process.ExitCode -eq 3010) {               \
