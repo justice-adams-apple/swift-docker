@@ -1,15 +1,14 @@
+# This docker image is used to verify the output of the 6.2 bootstrap artifacts by building
+# swift on the main branch. They are not bootstrapping main directly
 FROM ubuntu:24.04
 
-ARG BUILD_USER_ID=998
-
-RUN groupadd -g ${BUILD_USER_ID} build-user && \
-    useradd -m -r -u ${BUILD_USER_ID} -g build-user build-user
+RUN groupadd -g 998 build-user && \
+    useradd -m -r -u 998 -g build-user build-user
 
 ENV DEBIAN_FRONTEND="noninteractive"
 
 RUN apt-get -y update && apt-get -y install \
   build-essential       \
-  clang                 \
   cmake                 \
   git                   \
   icu-devtools          \
@@ -39,5 +38,35 @@ RUN apt-get -y update && apt-get -y install \
 COPY swift-ci/dependencies/requirements.txt /dependencies/
 RUN pip3 install -r /dependencies/requirements.txt --break-system-packages
 
+ARG SWIFT_PLATFORM=ubuntu24.04
+ARG SWIFT_VERSION=5.10.1
+ARG SWIFT_BRANCH=swift-${SWIFT_VERSION}-release
+ARG SWIFT_TAG=swift-${SWIFT_VERSION}-RELEASE
+ARG SWIFT_WEBROOT=https://download.swift.org
+ARG SWIFT_PREFIX=/opt/swift/${SWIFT_VERSION}
+
+ENV SWIFT_PLATFORM=$SWIFT_PLATFORM \
+    SWIFT_VERSION=$SWIFT_VERSION \
+    SWIFT_BRANCH=$SWIFT_BRANCH \
+    SWIFT_TAG=$SWIFT_TAG \
+    SWIFT_WEBROOT=$SWIFT_WEBROOT \
+    SWIFT_PREFIX=$SWIFT_PREFIX
+
+RUN set -e; \
+    && SWIFT_BIN_URL="$SWIFT_WEBROOT/tmp-ci-nightly/development/swift-6.2-bootstrap/ubuntu2404/latest.tar.gz" \
+    # - Grab curl here so we cache better up above
+    && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -q update && apt-get -q install -y curl && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL "$SWIFT_BIN_URL" -o swift.tar.gz \
+    # - Unpack the toolchain, set libs permissions, and clean up.
+    && mkdir -p $SWIFT_PREFIX \
+    && tar -xzf swift.tar.gz --directory $SWIFT_PREFIX --strip-components=1 \
+    && chmod -R o+r $SWIFT_PREFIX/usr/lib/swift \
+    && rm -rf "$GNUPGHOME" swift.tar.gz \
+    && apt-get purge --auto-remove -y curl
+
+ENV PATH="${SWIFT_PREFIX}/usr/bin:${PATH}"
+
 USER build-user
+
 WORKDIR /home/build-user
